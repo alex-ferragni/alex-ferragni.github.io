@@ -1,26 +1,83 @@
+<!DOCTYPE HTML>
+<!--
+	Prism by TEMPLATED
+	templated.co @templatedco
+	Released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+-->
 <html>
-  <head>
-    <script src="lib/d3.min.js"></script>
-    <script src="helpers.js"></script>
-    <script src="L3_slicing_4k_pages.js"></script>
-  </head>
+	<head>
+		<title>Automatic Architecture Inference</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<!--[if lte IE 9]><link rel="stylesheet" href="assets/css/ie9.css" /><![endif]-->
+	</head>
+	<body>
 
-  <body>
-    <div class="parameters">
-      <span>Look for cache associativity with stride length =</span></br>
-      <div id="cacheSizeInputContainer">
-        <div class="cacheSizeInput">
-          <input id="factor_0" type="number" min="1" max="99" value="1" size="4"></input>
-          <span>*2^</span>
-          <input id="power_0" type="number" min="10" max="24" value="15" size="4"></input>
-          <span>B</span>
-        </div>
-      </div>
-      <button id="startButton" onclick="executeSliceSearch()">GO</button>
-    </div>
-  </body>
+		<!-- Banner -->
+			<section id="banner">
+				<div class="inner">
+					<section>
+						<h2>Automatic Architecture Inference</h2>
+					</section>
+					<section>
+						<p>Master Semester project, Fall 2019, Alex Ferragni</p>
+					</section>
+				</div>
+			</section>
 
-	<div id="plots">
-	</div>
+		<!-- One -->
+			<section id="one" class="wrapper">
+				<div class="inner split">
+					<section>
+						<h2>Cache Associativity</h2>
+						<p>Try to measure the associativity of your caches.</p>
+						<button id="startButton" class="button special" onclick="executeSliceSearch()">GO</button>
+						<p></p>
 
+						<div id="cacheSizeInputContainer">
+							<div class="cacheSizeInput">
+								<input id="factor_0" type="number" min="1" max="99" value="1" size="4"></input>
+								<span>*2^</span>
+								<input id="power_0" type="number" min="10" max="24" value="15" size="4"></input>
+								<span>B</span>
+							</div>
+						</div>
+						<p>(Stride parameter, no need to change it, just in case)</p>
+					</section>
+					<section>
+						<h2>How to make it work</h2>
+						<p>
+							<strong>Reduce noise.</strong> It will need to take (more or less) precise measures by doing memory accesses, so try to reduce noise by exiting any unnecessary program that would use caches. Even scrolling in the console while it is running produces significant noise.</br>
+							<strong>Open the javascript console</strong> while you can, as soon as the script is launched, the page becomes unresponsive.</br>
+							<strong>Hit the GO button.</strong> The script will start, it may take a long time (more than 5-6 hours, maybe a day, I have yet to fully test).</br>
+							<strong>Wait.</strong> Either the console prints "Done!" and the page displays some graphs below, or the console prints an error, or the script is still running. A failed attempt might run unnecessarily long, feel free to abort after a reasonable time if you need to.</br>
+							<strong>Save results.</strong> Try to save the last console messages and the graphs, if it succeeded. If it failed or you aborted, try to save the last console messages and a message saying "summary of eviction sets found:", to see what went wrong and what it was doing.</br>
+							<strong>Thanks!</strong>
+						</p>
+					</section>
+				</div>
+			</section>
+
+		<!-- Plots -->
+
+			<section id="plots_section">
+				<div class="inner">
+					<div id="plots">
+					</div>
+				</div>
+			</section>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/skel.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+			<script src="assets/js/main.js"></script>
+			<script src="lib/d3.min.js"></script>
+		    <script src="helpers.js"></script>
+		    <script src="L3_slicing_4k_pages.js"></script>
+
+	</body>
 </html>

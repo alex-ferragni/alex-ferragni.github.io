@@ -117,7 +117,7 @@ function executeSliceSearch() {
 
 						//perform the average of many measures
 						for (var i=0; i<repeat * parametersDescriptors[j].enumerateRepeatFactor; ++i){
-							meanMeasure += measureAccessesWithoutChecking(mainArrAccessor, evictionSets[j].length, tempWays, true);
+							meanMeasure += measureAccessesWithoutChecking(mainArrAccessor, evictionSets[j].length, tempWays, true)[0];
 						}
 						meanMeasure /= repeat * parametersDescriptors[j].enumerateRepeatFactor;
 
@@ -143,7 +143,7 @@ function executeSliceSearch() {
 				}
 
 				//now, we know the addresses have been checked, simply perform the measures
-				return measureAccessesWithoutChecking(mainArrAccessor, numWays, ways2, mute);
+				return measureAccessesWithoutChecking(mainArrAccessor, numWays, ways2, mute)[0];
 			}
 
 			/* This function will prepare arrays content and then perform a single measure
@@ -203,7 +203,7 @@ function executeSliceSearch() {
 						console.log("for "+(numWays+1)+" ways, time = "+(endTick-beginTick)+", junk: "+junk);
 					}
 
-					return endTick-beginTick;
+					return [endTick-beginTick, junk];
 				}
 
 				return prepareAndMeasure();
@@ -429,7 +429,7 @@ function executeSliceSearch() {
 						numRepeat = Math.floor(numRepeat);
 					}
 					for (var count = 0; count<numRepeat; ++count){
-						var measures = measureAccesses(mainArrAccessor, numWays, ways, false, parametersDescriptors, descriptorId);
+						var measures = measureAccesses(mainArrAccessor, numWays, ways, true, parametersDescriptors, descriptorId);
 
 						results[test*repeat + count] = [numWays+1,measures]; //results may spill but it will be overwritten anyway
 
@@ -438,7 +438,11 @@ function executeSliceSearch() {
 
 					currentMean /= numRepeat;
 
-					// if we detected a step in the time functio
+					if (!warmup){ //print some infos
+						console.log("for "+(numWays+1)+" ways, mean time = "+currentMean);
+					}
+
+					// if we detected a step in the time function
 					if (!warmup && previousMean && previousMean * (1+1.5/numWays) < currentMean){
 
 						//we have detected a step in the time function, now we need to check whether it is caused by a new eviction set, or not
@@ -627,7 +631,7 @@ function executeSliceSearch() {
 			}
 
 			//in a loop, look for eviction sets
-			for (var descriptorId=0; descriptorId < parametersDescriptors.length; ++descriptorId){
+			for (var descriptorId=0; descriptorId < parametersDescriptors.lengt; ++descriptorId){
 				lookForEvictionSet(parametersDescriptors, descriptorId);
 			}
 
@@ -706,5 +710,7 @@ function executeSliceSearch() {
 		nIter = calibrate(inputs[i], nIter); //first calibrate
 		computeAndDisplay(nIter, inputs[i], maxTries, repeat, false); //then measure associativities
 	}
+
+	console.log("Done!");
 	
 }

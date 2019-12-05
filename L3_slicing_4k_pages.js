@@ -631,7 +631,7 @@ function executeSliceSearch() {
 			}
 
 			//in a loop, look for eviction sets
-			for (var descriptorId=0; descriptorId < parametersDescriptors.lengt; ++descriptorId){
+			for (var descriptorId=0; descriptorId < parametersDescriptors.length; ++descriptorId){
 				lookForEvictionSet(parametersDescriptors, descriptorId);
 			}
 

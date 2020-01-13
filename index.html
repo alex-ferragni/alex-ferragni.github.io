@@ -27,20 +27,44 @@
 				</div>
 			</section>
 
-		<!-- One -->
+		<!-- Cache Size -->
 			<section id="one" class="wrapper">
+				<div class="inner split">
+					<section>
+						<h2>Cache Size</h2>
+						<p>Try to measure the size of your caches.</p>
+						<button id="startButton" class="button special" onclick="executeCacheSearch()">GO</button>
+						<p></p>
+					</section>
+					<section>
+						<h2>How to make it work</h2>
+						<p>
+							<strong>Reduce noise.</strong> It will need to take (more or less) precise measures by doing memory accesses, so try to reduce noise by exiting any unnecessary program that would use caches. Even scrolling in the console while it is running produces significant noise.</br>
+							<strong>Check you use Firefox.</strong> I works best with Firefox, but it can also work with Google Chrome. Under no circumstances should you use Safari, it just won't work. No guarantees with other browsers (No tests).</br>
+							<strong>Open the javascript console</strong> while you can, as soon as the script is launched, the page becomes unresponsive.</br>
+							<strong>Hit the GO button.</strong> The script will start, it should terminate within a few minutes</br>
+							<strong>Wait.</strong> Either the console prints "Done!" and the page displays some graphs below, or the console prints an error.</br>
+							<strong>Save results.</strong> Try to save the last console messages and the graphs, if it succeeded. If it failed or you aborted, try to save the last console messages.</br>
+							<strong>Thanks!</strong>
+						</p>
+					</section>
+				</div>
+			</section>
+
+		<!-- Cache Associativity -->
+			<section id="two" class="wrapper">
 				<div class="inner split">
 					<section>
 						<h2>Cache Associativity</h2>
 						<p>Try to measure the associativity of your caches.</p>
-						<button id="startButton" class="button special" onclick="executeSliceSearch()">GO</button>
+						<button id="startButton" class="button special" onclick="executeSliceSearch(getStrideFromDiv())">GO</button>
 						<p></p>
 
 						<div id="cacheSizeInputContainer">
 							<div class="cacheSizeInput">
-								<input id="factor_0" type="number" min="1" max="99" value="1" size="4"></input>
+								<input id="factor_div" type="number" min="1" max="99" value="1" size="4"></input>
 								<span>*2^</span>
-								<input id="power_0" type="number" min="10" max="24" value="15" size="4"></input>
+								<input id="power_div" type="number" min="10" max="24" value="15" size="4"></input>
 								<span>B</span>
 							</div>
 						</div>
@@ -61,6 +85,7 @@
 				</div>
 			</section>
 
+
 		<!-- Plots -->
 
 			<section id="plots_section">
@@ -71,6 +96,12 @@
 			</section>
 
 		<!-- Scripts -->
+			<script type="text/javascript">
+				function getStrideFromDiv(){
+					return document.getElementById("factor_div").value * 2**(document.getElementById("power_div").value);
+				}
+			</script>
+
 			<script src="assets/js/jquery.min.js"></script>
 			<script src="assets/js/skel.min.js"></script>
 			<script src="assets/js/util.js"></script>
@@ -78,7 +109,8 @@
 			<script src="assets/js/main.js"></script>
 			<script src="lib/d3.min.js"></script>
 		    <script src="helpers.js"></script>
-		    <script src="L3_slicing_4k_pages.js"></script>
+		    <script src="associativity.js"></script>
+		    <script src="size.js"></script>
 
 	</body>
 </html>

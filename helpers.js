@@ -1,32 +1,8 @@
-graphId = 0;
-inputCount = 1;
+graphId = 0; //keep a global graph counter to use different ids for each
 
-function getNewCacheInput(defaultFactor, defaultPower){
-
-	var result = '<input id="factor_'+inputCount+'" type="number" min="1" max="99" value="'+defaultFactor+'" size="4"></input>'+
-          '<span>*2^</span>'+
-          '<input id="power_'+inputCount+'" type="number" min="10" max="24" value="'+defaultPower+'" size="4"></input>'+
-          '<span>B</span>';
-    inputCount++;
-    return result;
-}
-
-function addCacheSize(defaultFactor, defaultPower){
-	var newInput = document.createElement("div");
-	newInput.className = "cacheSizeInput";
-	newInput.innerHTML = getNewCacheInput(defaultFactor, defaultPower);
-	document.getElementById("cacheSizeInputContainer").appendChild(newInput);
-}
-function removeCacheSize(){
-	if (inputCount > 1){
-		var div = document.getElementById("factor_"+(inputCount-1)).parentElement.remove();
-		inputCount--;
-	}
-}
-function getCacheSize(id){
-	return document.getElementById("factor_"+id).value * 2**(document.getElementById("power_"+id).value);
-}
-
+/* 
+ * Randomly shuffle an array a of size length
+ */
 function shuffle(a, length) {
     var j, x, i;
     for (i = length - 1; i > 0; i--) {
@@ -38,6 +14,9 @@ function shuffle(a, length) {
     return a;
 }
 
+/* 
+ * Checks whether two arrays are equal. They are different if their sizes don't match, or if any element differ
+ */
 function areArrayEqual(a, b){
 	if (a.length != b.length){
 		return false;
@@ -50,6 +29,9 @@ function areArrayEqual(a, b){
 	return true;
 }
 
+/* 
+ * Checks whether two arrays are similar. The result corresponds to the Jaccard Index (https://en.wikipedia.org/wiki/Jaccard_index)
+ */
 function areArraySimilar(a, b, similarity){
 	var union = getArrayUnion(a, b);
 	var similarCount = 0;
@@ -61,22 +43,32 @@ function areArraySimilar(a, b, similarity){
 	return (similarCount/union.length >= similarity);
 }
 
+/*
+ * Simple helper function to return last array element. Helpful when the array name is long, or some computations must be done to get its reference, since it appears twice here
+ */
 function getArrayLastElement(a){
 	return a[a.length-1];
 }
 
+/*
+ * Return the union of two arrays. Notice the new order might be random
+ */
 function getArrayUnion(a, b){
 	return [...new Set([...a, ...b])];
 }
 
+/*
+ * Perform 1d kmeans on the data input. Data should be an array of integers. InitialCenters specifies the initial cluster centers.
+ * In this simple version, a constant number of iterations (nIter) are always performed
+ */
 function kmeans(data, initialCenters, nIter){
 	var centers = [...initialCenters];//make a copy
-	//console.log(initialCenters,centers);
-	//console.log(data);
-	var clusterIds = new Array(data.length);
+
+	var clusterIds = new Array(data.length); //for each point, the id of the assigned cluster
 	for (var iter = 0; iter<nIter; ++iter){
 		var newClusterIds = new Array(data.length);
 
+		//reassigne points to the nearest cluster center
 		for (var i=0; i<data.length; ++i){
 			var minDist = [2**20,-1];
 
@@ -88,6 +80,7 @@ function kmeans(data, initialCenters, nIter){
 			newClusterIds[i] = minDist[1];
 		}
 
+		//then recompute cluster centers
 		var newCenters = new Array(initialCenters.length);
 		var count = new Array(initialCenters.length);
 		for (var i=0; i<newCenters.length; ++i){
@@ -103,14 +96,66 @@ function kmeans(data, initialCenters, nIter){
 			newCenters[i] /= count[i];
 		}
 
-		//console.log(newCenters);
-		//console.log(newClusterIds);
 		centers = newCenters;
 		clusterIds = newClusterIds;
 	}
 	return clusterIds;
 }
 
+/*
+ * Helper function. Runs a kmeans algorithm with two clusters on the given measures, and then return only the ids of the measures of the lowest cluster
+ */
+function getLowerClusterKMeans(measures, min, max){
+	var points = new Array(measures.length);
+
+	for (var i=0; i<measures.length; ++i){
+		points[i] = measures[i][1];
+	}
+	clusterIds = kmeans(points, [min,(min+max)/2], 10);
+	var lowerClusterIndices = [];
+	for (var i=0; i<clusterIds.length-1; ++i){
+		if (clusterIds[i] == 0){
+			lowerClusterIndices.push(measures[i][0]);
+		}
+	}
+	return lowerClusterIndices;
+}
+
+/*
+ * this functions will calibrate the number of memory accesses that are executed for a single measure
+ * it does so by making sure that the quickest measure we make is around 10-30 cycles long (parametrized by "objective"), which is a good base time
+ * taking a measure is done by calling the function "performMeasuresWithNIter" with as only parameter the current number of iterations
+ * performMeasuresWithNIter should return the minimum measure that was taken
+ */
+function calibrateNIter(initialNIter, objective, performMeasuresWithNIter){
+	console.log("calibrating...");
+	var nIter = initialNIter;
+	var minCalibrate = 0;
+	var done = false; //e.g. are we done calibrating yet, have we reached the objective?
+	do{
+		minCalibrate = performMeasuresWithNIter(nIter);
+		console.log(minCalibrate)
+		if (minCalibrate < objective){
+			nIter *= 2;
+		}
+		else if (minCalibrate >= objective){
+			nIter = nIter * (objective/minCalibrate);
+			nIter = Math.floor(nIter);
+			done = true;
+		}
+	}
+	while(!done);
+	
+	console.log("done calibrating! Chose "+nIter+" iterations.");
+	return nIter;
+}
+
+/*
+ * Print a quick summary of the eviction sets found so far (if any), in case the console loses the first messages.
+ * format:
+ * "summary of eviction sets found: [[ids of addresses in this eviction set] (eviction set length, accessTimes: [negative reference time, positive reference time])]"
+ * where reference time represent the time necessary to access the entire eviction set plus a single point, which does / does not belong to this eviction set
+ */
 function printSummary(evictionSets, referenceTimes){
 	var summary = "summary of eviction sets found: ";
 	for (var i=0; i<evictionSets.length; ++i){
@@ -136,34 +181,40 @@ function printSummary(evictionSets, referenceTimes){
 	console.log(summary);
 }
 
+/*
+ * Computes the "line" under the given curve. Imagine we took a string, hold it below the curve, and highered both ends, then we got the line under the curve.
+ * results is an array of [x,y] points, sorted by increasing x value.
+ * returns the line under the curve (array of [x,y] points corresponding to the line under the curve])
+ */
 function lineUnderCurve(results){
+	//we start by finding the minimum point in the curve. We know it will be included in the line under the curve
 	min = [-1, 2**20];
 	minIndex = -1;
 
 	for (var i=0; i<results.length; ++i){
-		//console.log(min[1],results[i][1]);
 		if (min[1] > results[i][1]){
 			min = results[i];
-			//console.log(min);
 			minIndex = i;
 		}
 	}
-	curve = [min];
+	curve = [min]; 
 
+	//now, iteratively find the other points in the line under the curve, first right, then left.
+	//We do it by taking the right-most point in our current line, and add the point to its right that has the lowest slope. Repeat until we reached the right-most data point, 
+	//which will automatically belong to this line
 	index = minIndex;
 	while (index < results.length-1){
 		current = results[index];
-		minSlope = 2**20;
-		minSlopePoint = [-1, 0];
-		minSlopeIndex = -1;
+		minSlope = 2**20; //the minimum slope to the right found so far
+		minSlopePoint = [-1, 0]; //the point corresponding to this point
+		minSlopeIndex = -1; //and its index
 		for (var i=index+1; i<results.length; ++i){
 			point = results[i];
 
-			//console.log(i, results[i]);
-			if (point[0] != current[0]){
+			if (point[0] != current[0]){ // if the current x point is different, simply compute the slope
 				slope = (point[1]-current[1])/(point[0]-current[0]);
 			}
-			else{
+			else{ //if they are the same, slope would be infinite => set to very large slope, that depends from y difference (to only keep the highest point on the same x value)
 				slope = 2**10 + (point[1]-current[1]);
 			}
 			
@@ -175,25 +226,24 @@ function lineUnderCurve(results){
 			
 		}
 
-		//console.log(minSlopePoint, index);
-		index = minSlopeIndex;
-		curve.push(minSlopePoint);
-		//console.log(index, results.length-1);
+		index = minSlopeIndex; //update the current index, so that on the next iteration, either we stop or we check less points (to the right of index)
+		curve.push(minSlopePoint); //finally, add this point to line
 	}
 
+	//repeat the procedure, this time looking for the left part of the graph (note: we look for the maximum slope this time! The one that decreases the least)
 	index = minIndex;
 	while (index > 0){
 		current = results[index];
-		maxSlope = -(2**20);
-		maxSlopePoint = [-1, 0];
-		maxSlopeIndex = -1;
+		maxSlope = -(2**20); //the maximum slope to the right found so far
+		maxSlopePoint = [-1, 0]; //the point corresponding to this point
+		maxSlopeIndex = -1; //and its index
 		for (var i=index-1; i>=0; --i){
 			point = results[i];
 
-			if (point[0] != current[0]){
+			if (point[0] != current[0]){ // if the current x point is different, simply compute the slope
 				slope = (current[1]-point[1])/(current[0]-point[0]);
 			}
-			else{
+			else{ //if they are the same, slope would be -infinite => set to very large negative slope, that depends from y difference (to only keep the highest point on the same x value)
 				slope = -(2**10) - (point[1]-current[1]);
 			}
 			if (slope > maxSlope){
@@ -203,30 +253,37 @@ function lineUnderCurve(results){
 			}
 		}
 
-		//console.log(minSlopePoint, index);
-		index = maxSlopeIndex;
-		curve.unshift(maxSlopePoint);
-		//console.log(index, results.length-1);
+		index = maxSlopeIndex; //update the current index, so that on the next iteration, either we stop or we check less points (to the left of index)
+		curve.unshift(maxSlopePoint); //finally, add this point to line (at the beginning of the line!)
 	}
 
-	//console.log(curve);
 	return curve;
 }
 
-
+/*
+ * Given the line under a curve ("curve"), try to tell whether there is a sharp enough, significant enough increase in the slope
+ * curve should be an array of [x,y] points
+ * (which would correspond to a cache size being detected)
+ * But it should only detect "sharp enough" changes, which in practice is fairly hard
+ * The current method is to compate the slopes at 1/4 and 3/4 of the curve, we expect one to be larger than the other (we need to take the y scale into account!)
+ * We also compare the y value of the graph at 1/4 and 3/4 of the graph, we expect them to be different (even if the slope increased, if the graph remains fairly flat,
+ * no cache size should be detected)
+ * we also (sanity) check that the line between 1/4 and 3/4 isn't continuous, since there would be no increase
+ */
 function detectCacheSize(curve){
 	begin = curve[0][0];
 	end = curve[curve.length-1][0];
 
-	quarter = begin + (end-begin)/4;
-	thirdQuarter = begin + (end-begin)*3/4;
+	quarter = begin + (end-begin)/4; //x value at one quarter of the graph
+	thirdQuarter = begin + (end-begin)*3/4; //x value at three quarters of the graph
 
 	indexBeforeQuarter = 0;
 	indexBeforeThirdQuarter = 0;
 
-	maxY = 0;
+	maxY = 0; //keep track of max and min y values, to check that the difference bewteen 1/4 and 3/4 is significant enough
 	minY = 2**30;
 
+	//first, find the indexes of points right before a quarter and three quarters (we will need them to find the slopes)
 	for(var i=0; i<curve.length; ++i){
 		if (curve[i][0] < quarter){
 			indexBeforeQuarter = i;
@@ -243,14 +300,13 @@ function detectCacheSize(curve){
 		}
 	}
 
+	//use linear interpolation to compute y value at exactly one quarter
 	alpha = ((quarter - curve[indexBeforeQuarter][0]) / (curve[indexBeforeQuarter + 1][0] - curve[indexBeforeQuarter][0]));
 	interpolatedQuarter = (1 - alpha) * curve[indexBeforeQuarter][1] + alpha * curve[indexBeforeQuarter + 1][1];
 
+	//use linear interpolation to compute y value at exactly three quarters
 	alpha = ((thirdQuarter - curve[indexBeforeThirdQuarter][0]) / (curve[indexBeforeThirdQuarter + 1][0] - curve[indexBeforeThirdQuarter][0]));
 	interpolatedThirdQuarter = (1 - alpha) * curve[indexBeforeThirdQuarter][1] + alpha * curve[indexBeforeThirdQuarter + 1][1];
-
-	//console.log(quarter,thirdQuarter);
-	//console.log(interpolatedQuarter,interpolatedThirdQuarter);
 
 	yRange = maxY - minY;
 	variation = interpolatedThirdQuarter - interpolatedQuarter;
@@ -259,16 +315,19 @@ function detectCacheSize(curve){
 	console.log(variation / yRange);
 
 	threshold = 0.25;
+	//check that between the y value at one quarter and the y value at three quarters, there is at least 25% of the y scale contained
 
-
+	//compute the slopes at one quarter and three quarters
 	slopeAtQuarter = (curve[indexBeforeQuarter+1][1] - curve[indexBeforeQuarter][1]) / (curve[indexBeforeQuarter+1][0] - curve[indexBeforeQuarter][0]);
 	slopeAtThirdQuarter = (curve[indexBeforeThirdQuarter+1][1] - curve[indexBeforeThirdQuarter][1]) / (curve[indexBeforeThirdQuarter+1][0] - curve[indexBeforeThirdQuarter][0]);
+
+	//if the line between 1/4 and 3/4 is continuous, or the graph didn't increase much in between, then there is no cache detected
 	if (indexBeforeQuarter == indexBeforeThirdQuarter || (variation / yRange) < threshold){
-		//console.log("No cache Here.");
 		return false;
 	}
 	else{
-		//console.log("Cache detected!")
+		//else, check that the slope increase enough
+		//(we don't use that in practice because it yields more incorrect results thatn the current version)
 		if (slopeAtThirdQuarter * 0.7 < slopeAtQuarter){
 			console.log("could be false positive!");
 		}
@@ -276,43 +335,16 @@ function detectCacheSize(curve){
 	}
 }
 
-function detectSteps(results){
-	var averaged = new Array(results[results.length-1][0]);
-
-	var measuresPerBucket = results.length/averaged.length;
-
-	for (var i=0; i<averaged.length; ++i){
-		averaged[i]=0;
-		for (var j=0; j<measuresPerBucket; ++j){
-			averaged[i] += results[i * measuresPerBucket + j][1];
-		}
-		averaged[i] /= measuresPerBucket;
-	}
-
-	var range = averaged[averaged.length-1] - averaged[0];
-
-	var previous = averaged[0];
-
-	var steps = [];
-	for (var i=1; i<averaged.length; ++i){
-		var current = averaged[i];
-		if (current - previous >= range/10){
-			if (i%2 == 0){
-				steps.push(i);
-			}
-			else{
-				steps.push(i-1);//(possibly a duplicate: TODO: solve)
-				steps.push(i+1);
-			}
-		}
-		previous = current;
-	} 
-
-	return [...new Set(steps)];
-}
-
+/*
+ * Use d3 to plot an interesting graph. Graphs are an array of [x,y] points.
+ * if curve != null, display it on the graph as well (it is the line under the curve)
+ * curve should be an array of [x,y] points.
+ * if steps != null, display corresponding vertical lines (either green or ref)
+ * steps should be an array of [array of green lines, array of red lines]
+ * where a "line" is an x value
+ */
 function displayResults(results, curve, steps){
-	var max = 0;
+	var max = 0; //keep track of the maximum y value, for the scales
 	for (var i=0; i<results.length; ++i){
 		if(results[i][1] > max){
 			max = results[i][1];
@@ -322,12 +354,15 @@ function displayResults(results, curve, steps){
 
 	var svgId = "svg_"+graphId;
 	++graphId;
+	//append a new default svg div
 	div.append("div").html('<svg id="'+svgId+'" viewBox="-20 -20 230 160" width="100%" height="80%"><style>.line {fill: none;stroke: steelblue;stroke-width: 2px;}.grid line {stroke: lightgrey;stroke-opacity: 0.7;shape-rendering: crispEdges;}.grid path {stroke-width: 0;}#text {font-size: "3";}</style></svg>');
 
+	//x scale
 	var scaleX = d3.scaleLinear()
 		.domain([results[0][0]-1,results[results.length-1][0]])
-		.range([-0,200]);
+		.range([0,200]);
 
+	//y scale
 	var scaleY = d3.scaleLinear()
 		.domain([0,max])
 		.range([100,0])
@@ -344,14 +379,13 @@ function displayResults(results, curve, steps){
 	        .ticks(10)
 	}
 
+	//select current svg with its id
 	var svg = d3.select("#"+svgId);
 
 	var x_axis = d3.axisBottom()
 		.scale(scaleX);
 	var y_axis = d3.axisLeft()
 		.scale(scaleY);
-
-	//var yAxis = svg.axis().scale(scaleY)
 
 	// add the X gridlines
 	svg.append("g")			
@@ -370,6 +404,7 @@ function displayResults(results, curve, steps){
 	      .tickFormat("")
 	  )
 
+	// set x axis parameters
     svg.append("g")
     	.call(x_axis)
     	.attr("transform", "translate(0, 100)")
@@ -378,13 +413,14 @@ function displayResults(results, curve, steps){
     		.attr("transform","translate(-12,7)rotate(-90)")
     		.attr("font-size","5px")
 
+	// set y axis parameters
     svg.append("g")
     	.call(y_axis)
-    	//.attr("transform", "translate(0, 100)")
     	.selectAll("text")
     		.attr("text-anchor", "end")
     		.attr("font-size","5px")
 
+	//set data (the points) parameters
 	svg.selectAll("circle")
 		.data(results)
 		.enter()
@@ -395,13 +431,7 @@ function displayResults(results, curve, steps){
 			.style("fill",(d,i) => "blue")
 		
 
-	/*svg.append("text")
-    .attr("class", "x label")
-    .attr("x", 20)
-    .attr("y", 20)
-    .attr("font-size","7px")
-    .text("Time per array access");*/
-
+	//if one is provided, display the given curve
     if (curve != null){
     	var lineGenerator = d3.line()
 		.x(function(d) { return scaleX(d[0]); })
@@ -414,6 +444,7 @@ function displayResults(results, curve, steps){
 			.attr("fill", "none");
     }
 
+    //if some are provided, display the green and red vertical lines given
     if (steps != null){
     	for (var i=0; i<steps[0].length; ++i){
 			svg.append("line")

@@ -17,9 +17,6 @@
 
 %\newcommand{\sysname}{FooSystem\xspace}
 
-%TODO reread: fetch address ==> fetch block
-%TODO reread: be precise. "the browser..." => "the JIT compiler"
-
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
 
@@ -99,8 +96,6 @@ Finally, we summarize here the contributions of this work. We took an existing a
 %This section is usually 3-5 pages.
 
 \section{Caches}
-
-%TODO: (here also)
 
 Caches were introduced in processors to speed up memory accesses. The reason is that caches serve as a memory/speed trade off. Caches are smaller than the main memory, but are also faster to access. They are mostly organized in hierarchy. When the processor wants to fetch a block from memory, it first checks whether it is contained in the \emph{first level cache} (L1). The L1 is the fastest but smallest cache. If the block is not contained in the L1, it will then check the other caches, or finally the main memory if no cache contains it. Each cache has a greater capacity, but also slower accesses than the previous one. Finally, the \emph{last level cache} (LLC) is often shared across cores, and cache coherence protocols maintain a coherent state of the cache across cores.
 
